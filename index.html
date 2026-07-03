@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SRT to VTT Converter &amp; Subtitle Time Shifter — Free, No Upload</title>
+<meta name="description" content="Convert subtitles between SRT, WebVTT and SBV, shift timing to fix out-of-sync subtitles, strip formatting tags, and export plain transcripts. Batch files, instant results — everything runs in your browser, nothing is uploaded.">
+<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101217" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="SRT ⇄ VTT Subtitle Converter &amp; Time Shifter">
+<meta property="og:description" content="Free subtitle converter and sync shifter for SRT, WebVTT and SBV. Runs 100% in your browser — files are never uploaded.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BitBleep">
+<meta property="og:url" content="https://prayert.github.io/subtitle-tools/">
+<meta property="og:image" content="https://prayert.github.io/subtitle-tools/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://prayert.github.io/subtitle-tools/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233757e0'/%3E%3Crect x='10' y='38' width='32' height='7' rx='3.5' fill='%23fff'/%3E%3Crect x='10' y='49' width='44' height='7' rx='3.5' fill='%23fff' opacity='.75'/%3E%3Cpath d='M24 12l14 9-14 9z' fill='%23fff'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Subtitle Converter & Time Shifter",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": "Convert SRT to VTT, convert VTT to SRT, convert SBV, shift subtitle timing, strip formatting tags, export plain-text transcript, batch conversion with ZIP download",
+  "publisher": { "@type": "Organization", "name": "BitBleep", "url": "https://bitbleep.itch.io" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why doesn't my SRT file work with HTML5 video?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The HTML5 <track> element only accepts WebVTT (.vtt) files. SRT files are almost identical but use commas in timestamps (00:00:01,600) instead of periods and lack the required WEBVTT header line. Convert your SRT file to VTT with this tool and the captions will load." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the difference between SRT and VTT?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Both store numbered cues with start/end times and text. SRT uses a comma as the millisecond separator and has no header. WebVTT starts with a WEBVTT header, uses a period as the millisecond separator, and additionally supports styling, positioning and voice tags. SRT is the common exchange format for video editors and players; VTT is required for captions on the web." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is an SBV file?",
+      "acceptedAnswer": { "@type": "Answer", "text": "SBV (SubViewer) is the format YouTube's caption editor exports. Each cue is a single line with start and end times separated by a comma (0:00:01.600,0:00:04.080) followed by the caption text. Most editors and players don't accept SBV directly, so it usually needs to be converted to SRT or VTT." }
+    },
+    {
+      "@type": "Question",
+      "name": "Are my subtitle files uploaded to a server?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. This page is a static site with no backend. Parsing, conversion, shifting and ZIP packaging all run as JavaScript inside your browser, so your files never leave your device. Once the page has loaded it even works offline." }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I fix subtitles that are out of sync?",
+      "acceptedAnswer": { "@type": "Answer", "text": "If the subtitles are off by the same amount for the whole video, enter that offset in the Shift field — for example -2.5 makes every subtitle appear 2.5 seconds earlier. If the delay grows or shrinks over time, the subtitle file was made for a different frame rate or cut of the video; a constant shift cannot fix that drift, and you would need retiming against the correct version." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I convert multiple subtitle files at once?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Drop any number of .srt, .vtt or .sbv files onto the page. Each file is converted with the same settings, and you can download them individually or all together as a ZIP archive." }
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  --bg:#f7f8fb; --panel:#ffffff; --text:#1b2333; --muted:#5b6474;
+  --border:#dde1ea; --accent:#3757e0; --accent-text:#ffffff;
+  --accent-soft:#eaeefc; --ok:#1a7f4e; --err:#c0392b; --mono-bg:#f2f4f9;
+  --shadow:0 1px 3px rgba(20,30,60,.07),0 8px 24px rgba(20,30,60,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#101217; --panel:#181b22; --text:#e8eaf0; --muted:#9aa3b2;
+    --border:#2a2f3a; --accent:#8ea2ff; --accent-text:#0e1330;
+    --accent-soft:#232a45; --ok:#5ecb96; --err:#ff8a75; --mono-bg:#12151b;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+main,header.site,footer.site{max-width:900px;margin:0 auto;padding:0 20px}
+header.site{padding-top:40px;text-align:center}
+h1{font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.25;margin:0 0 10px}
+.tagline{color:var(--muted);margin:0 auto 6px;max-width:44em}
+.privacy-note{display:inline-block;font-size:.85rem;color:var(--ok);border:1px solid currentColor;
+  border-radius:99px;padding:2px 12px;margin-top:10px;opacity:.9}
+section{margin:36px 0}
+h2{font-size:1.25rem;margin:0 0 12px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.tool{padding:20px}
+.dropzone{
+  border:2px dashed var(--border);border-radius:12px;padding:26px 16px;text-align:center;
+  color:var(--muted);cursor:pointer;transition:border-color .15s,background .15s;outline-offset:3px;
+}
+.dropzone:hover,.dropzone:focus-visible,.dropzone.dragging{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.dropzone strong{color:var(--text)}
+.dropzone label{color:var(--accent);cursor:pointer;text-decoration:underline}
+.file-list{list-style:none;display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:12px 0 0}
+.file-chip{
+  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  font:inherit;font-size:.83rem;padding:6px 12px;border-radius:9px;cursor:pointer;
+  background:var(--mono-bg);border:1px solid var(--border);color:var(--text);
+}
+.file-chip.selected{border-color:var(--accent);background:var(--accent-soft)}
+.file-chip.has-error{border-color:var(--err)}
+.file-chip .chip-status{color:var(--muted);font-size:.75rem}
+.file-chip.has-error .chip-status{color:var(--err)}
+.io-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media (max-width:720px){.io-grid{grid-template-columns:1fr}}
+.io-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.io-col label.col-label{font-weight:600;font-size:.9rem}
+textarea{
+  width:100%;min-height:230px;resize:vertical;border:1px solid var(--border);border-radius:10px;
+  background:var(--mono-bg);color:var(--text);padding:12px;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin:18px 0 4px;
+  padding:14px;border:1px solid var(--border);border-radius:10px}
+.controls .field{display:flex;align-items:center;gap:8px;font-size:.92rem}
+select,input[type=number]{
+  font:inherit;font-size:.92rem;color:var(--text);background:var(--panel);
+  border:1px solid var(--border);border-radius:8px;padding:6px 8px;
+}
+input[type=number]{width:96px}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.btn{
+  font:inherit;font-size:.92rem;font-weight:600;border-radius:9px;padding:8px 16px;cursor:pointer;
+  border:1px solid var(--border);background:var(--panel);color:var(--text);
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.btn-primary:hover{opacity:.92;color:var(--accent-text)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--border);color:var(--text)}
+.btn-primary:disabled:hover{color:var(--accent-text)}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.stats{font-size:.88rem;color:var(--muted);min-height:1.4em;margin:10px 0 0}
+.stats-ok{color:var(--ok)}
+.stats-error{color:var(--err)}
+.steps{padding-left:1.3em;margin:0}
+.steps li{margin:6px 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+.table-wrap{overflow-x:auto}
+th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--mono-bg)}
+td code,p code,li code{background:var(--mono-bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:.85em}
+details{border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--panel)}
+summary{font-weight:600;cursor:pointer}
+details p{margin:10px 0 2px;color:var(--muted)}
+footer.site{border-top:1px solid var(--border);margin-top:48px;padding-top:24px;padding-bottom:40px;
+  font-size:.88rem;color:var(--muted)}
+footer.site h2{font-size:1rem;color:var(--text)}
+.more-tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;padding:0;list-style:none}
+.more-tools li{border:1px dashed var(--border);border-radius:8px;padding:4px 12px}
+.more-tools a{color:var(--accent);text-decoration:none}
+.more-tools a:hover{text-decoration:underline}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <h1>Subtitle Converter &amp; Time Shifter</h1>
+  <p class="tagline">Convert between <strong>SRT</strong>, <strong>WebVTT</strong> and <strong>SBV</strong>, shift timing to fix out-of-sync subtitles, strip formatting tags, or export a plain transcript.</p>
+  <p class="privacy-note">Runs 100% in your browser — files are never uploaded</p>
+</header>
+
+<main>
+  <section aria-label="Converter tool">
+    <div class="panel tool">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Add subtitle files">
+        <strong>Drop .srt / .vtt / .sbv files here</strong> (multiple files supported)<br>
+        or <label for="file-input">browse for files</label>
+        <input type="file" id="file-input" class="visually-hidden" multiple accept=".srt,.vtt,.sbv,.sub,.txt,text/plain,text/vtt">
+      </div>
+      <ul id="file-list" class="file-list" hidden></ul>
+
+      <div class="controls" role="group" aria-label="Conversion options">
+        <span class="field">
+          <label for="out-format">Convert to</label>
+          <select id="out-format">
+            <option value="vtt">WebVTT (.vtt)</option>
+            <option value="srt">SRT (.srt)</option>
+            <option value="sbv">SBV (.sbv)</option>
+            <option value="txt">Plain text transcript (.txt)</option>
+          </select>
+        </span>
+        <span class="field">
+          <label for="shift-input">Shift by</label>
+          <input type="number" id="shift-input" step="0.1" placeholder="0.0" aria-describedby="shift-hint">
+          <span id="shift-hint">seconds (e.g. <code>-2.5</code>)</span>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-strip">
+          <label for="opt-strip">Strip formatting tags (<code>&lt;i&gt;</code>, <code>&lt;font&gt;</code>, <code>{\an8}</code>…)</label>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-remove-empty">
+          <label for="opt-remove-empty">Remove empty cues</label>
+        </span>
+      </div>
+
+      <div class="io-grid">
+        <div class="io-col">
+          <label class="col-label" for="paste-input">Input — or paste subtitle text</label>
+          <textarea id="paste-input" spellcheck="false" placeholder="1&#10;00:00:01,600 --> 00:00:04,080&#10;Paste SRT, WebVTT or SBV here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn" id="btn-sample">Load sample</button>
+            <button type="button" class="btn" id="btn-clear">Clear</button>
+          </div>
+        </div>
+        <div class="io-col">
+          <label class="col-label" for="output">Output (updates instantly)</label>
+          <textarea id="output" readonly spellcheck="false" placeholder="Converted subtitles appear here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-download" disabled>Download file</button>
+            <button type="button" class="btn btn-primary" id="btn-download-all" hidden>Download all as ZIP</button>
+            <button type="button" class="btn" id="btn-copy" disabled>Copy output</button>
+          </div>
+        </div>
+      </div>
+      <p id="stats" class="stats">Drop subtitle files or paste subtitle text to start.</p>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-h">
+    <h2 id="how-h">How to use it</h2>
+    <ol class="steps">
+      <li><strong>Add subtitles</strong> — drop one or more <code>.srt</code>, <code>.vtt</code> or <code>.sbv</code> files, or paste subtitle text. The format is detected automatically.</li>
+      <li><strong>Pick your options</strong> — choose the output format, optionally shift all timestamps by a number of seconds (negative = earlier), strip styling tags, or drop empty cues. The output updates as you type.</li>
+      <li><strong>Save the result</strong> — copy it, download the file, or grab every converted file at once as a ZIP.</li>
+    </ol>
+  </section>
+
+  <section id="formats" aria-labelledby="formats-h">
+    <h2 id="formats-h">SRT vs WebVTT vs SBV at a glance</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Format</th><th scope="col">Timestamp style</th><th scope="col">Typically used by</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SRT</strong> (SubRip)</td>
+            <td><code>00:00:01,600 --&gt; 00:00:04,080</code> — comma before milliseconds, numbered cues, no header</td>
+            <td>Video editors (Premiere Pro, DaVinci Resolve), media players (VLC), most subtitle exchanges</td>
+          </tr>
+          <tr>
+            <td><strong>WebVTT</strong> (.vtt)</td>
+            <td><code>00:00:01.600 --&gt; 00:00:04.080</code> — period before milliseconds, file starts with <code>WEBVTT</code></td>
+            <td>HTML5 <code>&lt;track&gt;</code> captions, video hosting platforms, HLS streaming</td>
+          </tr>
+          <tr>
+            <td><strong>SBV</strong> (SubViewer)</td>
+            <td><code>0:00:01.600,0:00:04.080</code> — start and end on one comma-separated line</td>
+            <td>YouTube caption editor exports</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The differences look tiny — a comma instead of a period, one header line — but they are exactly why a browser silently refuses an SRT caption track or an editor rejects a VTT file. This tool rewrites the timestamps and structure so each side gets the syntax it expects, and renumbers cues cleanly along the way.</p>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-h">
+    <h2 id="faq-h">Frequently asked questions</h2>
+
+    <details>
+      <summary>Why doesn't my SRT file work with HTML5 video?</summary>
+      <p>The HTML5 <code>&lt;track&gt;</code> element only accepts WebVTT (.vtt) files. SRT files are almost identical but use commas in timestamps (<code>00:00:01,600</code>) instead of periods and lack the required <code>WEBVTT</code> header line. Convert your SRT file to VTT with this tool and the captions will load.</p>
+    </details>
+
+    <details>
+      <summary>What is the difference between SRT and VTT?</summary>
+      <p>Both store numbered cues with start/end times and text. SRT uses a comma as the millisecond separator and has no header. WebVTT starts with a <code>WEBVTT</code> header, uses a period as the millisecond separator, and additionally supports styling, positioning and voice tags. SRT is the common exchange format for video editors and players; VTT is required for captions on the web.</p>
+    </details>
+
+    <details>
+      <summary>What is an SBV file?</summary>
+      <p>SBV (SubViewer) is the format YouTube's caption editor exports. Each cue is a single line with start and end times separated by a comma (<code>0:00:01.600,0:00:04.080</code>) followed by the caption text. Most editors and players don't accept SBV directly, so it usually needs to be converted to SRT or VTT.</p>
+    </details>
+
+    <details>
+      <summary>Are my subtitle files uploaded to a server?</summary>
+      <p>No. This page is a static site with no backend. Parsing, conversion, shifting and ZIP packaging all run as JavaScript inside your browser, so your files never leave your device. Once the page has loaded it even works offline.</p>
+    </details>
+
+    <details>
+      <summary>How do I fix subtitles that are out of sync?</summary>
+      <p>If the subtitles are off by the same amount for the whole video, enter that offset in the Shift field — for example <code>-2.5</code> makes every subtitle appear 2.5 seconds earlier. If the delay grows or shrinks over time, the subtitle file was made for a different frame rate or cut of the video; a constant shift cannot fix that drift, and you would need retiming against the correct version.</p>
+    </details>
+
+    <details>
+      <summary>Can I convert multiple subtitle files at once?</summary>
+      <p>Yes. Drop any number of <code>.srt</code>, <code>.vtt</code> or <code>.sbv</code> files onto the page. Each file is converted with the same settings, and you can download them individually or all together as a ZIP archive.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="site">
+  <h2>More from BitBleep</h2>
+  <ul class="more-tools">
+    <li><a href="https://bitbleep.itch.io" rel="noopener" target="_blank">Game assets &amp; tools on itch.io</a></li>
+    <li><a href="https://bitbleep.itch.io/retro-sfx-teaser" rel="noopener" target="_blank">Free retro SFX pack (20 sounds)</a></li>
+    <li><a href="https://github.com/PrayerT/retro-sfx-gen" rel="noopener" target="_blank">Open-source SFX generator (GitHub)</a></li>
+  </ul>
+  <p>Made by BitBleep. This tool is free, has no ads, and processes everything locally in your browser &mdash; files are never uploaded.</p>
+</footer>
+
+<script src="subtitle-core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

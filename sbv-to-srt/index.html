@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBV to SRT Converter — YouTube Captions to SubRip, Free</title>
+<meta name="description" content="Convert SBV caption files from YouTube Studio into standard SRT. Fixes single-digit hours, comma-joined timing lines and missing cue numbers so editors and players accept the file. Free, in-browser, no upload.">
+<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101217" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="SBV to SRT Converter (YouTube Captions) — Free, No Upload">
+<meta property="og:description" content="Turn YouTube's .sbv caption exports into standard .srt files. Runs 100% in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BitBleep">
+<meta property="og:url" content="https://prayert.github.io/subtitle-tools/sbv-to-srt/">
+<meta property="og:image" content="https://prayert.github.io/subtitle-tools/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://prayert.github.io/subtitle-tools/sbv-to-srt/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233757e0'/%3E%3Crect x='10' y='38' width='32' height='7' rx='3.5' fill='%23fff'/%3E%3Crect x='10' y='49' width='44' height='7' rx='3.5' fill='%23fff' opacity='.75'/%3E%3Cpath d='M24 12l14 9-14 9z' fill='%23fff'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SBV to SRT Converter",
+  "url": "https://prayert.github.io/subtitle-tools/sbv-to-srt/",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": "Convert SBV (SubViewer/YouTube) to SRT, add cue numbers, rewrite comma-joined timing lines, pad single-digit hours, batch conversion with ZIP download",
+  "publisher": { "@type": "Organization", "name": "BitBleep", "url": "https://bitbleep.itch.io" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Where do I get an SBV file from YouTube?",
+      "acceptedAnswer": { "@type": "Answer", "text": "In YouTube Studio open Subtitles, pick the video and language, click the three-dot menu next to the track and choose a download format — .sbv is the classic SubViewer export. Modern Studio can also hand you .srt or .vtt directly, so this converter is most useful for older .sbv archives you already have, or for third-party captioning tools that still only emit SBV." }
+    },
+    {
+      "@type": "Question",
+      "name": "Why won't my video editor open the .sbv file directly?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Almost nothing outside YouTube speaks SubViewer. An SBV timing line reads 0:00:01.600,0:00:04.080 — no --> arrow, no cue numbers, single-digit hours — so importers built for SRT see a malformed file and give up on the first line. Converting to SRT rewrites the structure into what editors, players and translation platforms expect." }
+    },
+    {
+      "@type": "Question",
+      "name": "Does SBV support italics, colors or positioning?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No — SBV cue text is plain text only. That means there is nothing to lose in this direction of conversion. If you want italics in the resulting SRT you can add <i> tags after converting; just don't take that SRT back to SBV afterwards, because YouTube would display the tags as literal text." }
+    },
+    {
+      "@type": "Question",
+      "name": "What do the \">>\" arrows in my YouTube captions mean?",
+      "acceptedAnswer": { "@type": "Answer", "text": "A double angle bracket is the closed-captioning convention for a change of speaker (and \">> [music]\"-style brackets mark sound events). They are ordinary text, not markup, so the converter passes them through unchanged. Keep them if the SRT is for accessibility; delete them in your editor if the SRT is just a transcript source." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I convert SRT back to SBV for tools that expect SubViewer?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Change the \"Convert to\" menu on this page to SBV (.sbv) and drop in an SRT file — the converter writes proper SubViewer output with period milliseconds, single-digit hours and comma-joined timing lines. Enable tag stripping first so no <i> or <font> markup leaks into the plain-text SBV." }
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  --bg:#f7f8fb; --panel:#ffffff; --text:#1b2333; --muted:#5b6474;
+  --border:#dde1ea; --accent:#3757e0; --accent-text:#ffffff;
+  --accent-soft:#eaeefc; --ok:#1a7f4e; --err:#c0392b; --mono-bg:#f2f4f9;
+  --shadow:0 1px 3px rgba(20,30,60,.07),0 8px 24px rgba(20,30,60,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#101217; --panel:#181b22; --text:#e8eaf0; --muted:#9aa3b2;
+    --border:#2a2f3a; --accent:#8ea2ff; --accent-text:#0e1330;
+    --accent-soft:#232a45; --ok:#5ecb96; --err:#ff8a75; --mono-bg:#12151b;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+main,header.site,footer.site{max-width:900px;margin:0 auto;padding:0 20px}
+header.site{padding-top:40px;text-align:center}
+h1{font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.25;margin:0 0 10px}
+.tagline{color:var(--muted);margin:0 auto 6px;max-width:44em}
+.privacy-note{display:inline-block;font-size:.85rem;color:var(--ok);border:1px solid currentColor;
+  border-radius:99px;padding:2px 12px;margin-top:10px;opacity:.9}
+.tool-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:18px 0 0;font-size:.88rem}
+.tool-nav a{color:var(--accent);text-decoration:none;border:1px solid var(--border);border-radius:99px;
+  padding:3px 12px;background:var(--panel)}
+.tool-nav a:hover{border-color:var(--accent)}
+.tool-nav a[aria-current=page]{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+section{margin:36px 0}
+h2{font-size:1.25rem;margin:0 0 12px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.tool{padding:20px}
+.dropzone{
+  border:2px dashed var(--border);border-radius:12px;padding:26px 16px;text-align:center;
+  color:var(--muted);cursor:pointer;transition:border-color .15s,background .15s;outline-offset:3px;
+}
+.dropzone:hover,.dropzone:focus-visible,.dropzone.dragging{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.dropzone strong{color:var(--text)}
+.dropzone label{color:var(--accent);cursor:pointer;text-decoration:underline}
+.file-list{list-style:none;display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:12px 0 0}
+.file-chip{
+  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  font:inherit;font-size:.83rem;padding:6px 12px;border-radius:9px;cursor:pointer;
+  background:var(--mono-bg);border:1px solid var(--border);color:var(--text);
+}
+.file-chip.selected{border-color:var(--accent);background:var(--accent-soft)}
+.file-chip.has-error{border-color:var(--err)}
+.file-chip .chip-status{color:var(--muted);font-size:.75rem}
+.file-chip.has-error .chip-status{color:var(--err)}
+.io-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media (max-width:720px){.io-grid{grid-template-columns:1fr}}
+.io-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.io-col label.col-label{font-weight:600;font-size:.9rem}
+textarea{
+  width:100%;min-height:230px;resize:vertical;border:1px solid var(--border);border-radius:10px;
+  background:var(--mono-bg);color:var(--text);padding:12px;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin:18px 0 4px;
+  padding:14px;border:1px solid var(--border);border-radius:10px}
+.controls .field{display:flex;align-items:center;gap:8px;font-size:.92rem}
+select,input[type=number]{
+  font:inherit;font-size:.92rem;color:var(--text);background:var(--panel);
+  border:1px solid var(--border);border-radius:8px;padding:6px 8px;
+}
+input[type=number]{width:96px}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.btn{
+  font:inherit;font-size:.92rem;font-weight:600;border-radius:9px;padding:8px 16px;cursor:pointer;
+  border:1px solid var(--border);background:var(--panel);color:var(--text);
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.btn-primary:hover{opacity:.92;color:var(--accent-text)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--border);color:var(--text)}
+.btn-primary:disabled:hover{color:var(--accent-text)}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.stats{font-size:.88rem;color:var(--muted);min-height:1.4em;margin:10px 0 0}
+.stats-ok{color:var(--ok)}
+.stats-error{color:var(--err)}
+.steps{padding-left:1.3em;margin:0}
+.steps li{margin:6px 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+.table-wrap{overflow-x:auto}
+th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--mono-bg)}
+td code,p code,li code{background:var(--mono-bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:.85em}
+pre{background:var(--mono-bg);border:1px solid var(--border);border-radius:10px;padding:12px;overflow-x:auto;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0}
+.example-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:720px){.example-grid{grid-template-columns:1fr}}
+.example-grid .col-label{font-weight:600;font-size:.9rem;display:block;margin-bottom:6px}
+details{border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--panel)}
+summary{font-weight:600;cursor:pointer}
+details p{margin:10px 0 2px;color:var(--muted)}
+footer.site{border-top:1px solid var(--border);margin-top:48px;padding-top:24px;padding-bottom:40px;
+  font-size:.88rem;color:var(--muted)}
+footer.site h2{font-size:1rem;color:var(--text)}
+.more-tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;padding:0;list-style:none}
+.more-tools li{border:1px dashed var(--border);border-radius:8px;padding:4px 12px}
+.more-tools a{color:var(--accent);text-decoration:none}
+.more-tools a:hover{text-decoration:underline}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <h1>SBV to SRT Converter</h1>
+  <p class="tagline">Turn SubViewer (<strong>.sbv</strong>) captions — the classic export from YouTube's caption editor — into standard SubRip (<strong>.srt</strong>) files that any editor or player can open.</p>
+  <p class="privacy-note">Runs 100% in your browser — files are never uploaded</p>
+  <nav class="tool-nav" aria-label="Subtitle tools">
+    <a href="../">All-in-one converter</a>
+    <a href="../srt-to-vtt/">SRT → VTT</a>
+    <a href="../vtt-to-srt/">VTT → SRT</a>
+    <a href="./" aria-current="page">SBV → SRT</a>
+    <a href="../shift-subtitle-timing/">Shift timing</a>
+  </nav>
+</header>
+
+<main>
+  <section aria-label="SBV to SRT converter tool">
+    <div class="panel tool">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Add SBV files">
+        <strong>Drop .sbv files here</strong> (multiple files supported — .srt and .vtt work too)<br>
+        or <label for="file-input">browse for files</label>
+        <input type="file" id="file-input" class="visually-hidden" multiple accept=".srt,.vtt,.sbv,.sub,.txt,text/plain,text/vtt">
+      </div>
+      <ul id="file-list" class="file-list" hidden></ul>
+
+      <div class="controls" role="group" aria-label="Conversion options">
+        <span class="field">
+          <label for="out-format">Convert to</label>
+          <select id="out-format">
+            <option value="vtt">WebVTT (.vtt)</option>
+            <option value="srt" selected>SRT (.srt)</option>
+            <option value="sbv">SBV (.sbv)</option>
+            <option value="txt">Plain text transcript (.txt)</option>
+          </select>
+        </span>
+        <span class="field">
+          <label for="shift-input">Shift by</label>
+          <input type="number" id="shift-input" step="0.1" placeholder="0.0" aria-describedby="shift-hint">
+          <span id="shift-hint">seconds (e.g. <code>-2.5</code>)</span>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-strip">
+          <label for="opt-strip">Strip formatting tags (<code>&lt;i&gt;</code>, <code>&lt;font&gt;</code>, <code>{\an8}</code>…)</label>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-remove-empty">
+          <label for="opt-remove-empty">Remove empty cues</label>
+        </span>
+      </div>
+
+      <div class="io-grid">
+        <div class="io-col">
+          <label class="col-label" for="paste-input">Input — or paste SBV text</label>
+          <textarea id="paste-input" spellcheck="false" placeholder="0:00:01.600,0:00:04.080&#10;Paste SBV here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn" id="btn-sample">Load sample</button>
+            <button type="button" class="btn" id="btn-clear">Clear</button>
+          </div>
+        </div>
+        <div class="io-col">
+          <label class="col-label" for="output">SRT output (updates instantly)</label>
+          <textarea id="output" readonly spellcheck="false" placeholder="SRT output appears here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-download" disabled>Download .srt</button>
+            <button type="button" class="btn btn-primary" id="btn-download-all" hidden>Download all as ZIP</button>
+            <button type="button" class="btn" id="btn-copy" disabled>Copy output</button>
+          </div>
+        </div>
+      </div>
+      <p id="stats" class="stats">Drop .sbv files or paste SBV text to start.</p>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-h">
+    <h2 id="how-h">From YouTube Studio to a working SRT</h2>
+    <ol class="steps">
+      <li><strong>Export the captions</strong> — in YouTube Studio, open <em>Subtitles</em>, choose the video and language, then use the three-dot menu on the track to download the <code>.sbv</code> file.</li>
+      <li><strong>Drop it above</strong> — the format is detected as SBV automatically and the output is already set to SRT. Multiple exports convert in one go.</li>
+      <li><strong>Download the .srt</strong> — cues arrive numbered, with <code>--&gt;</code> timing lines and comma milliseconds, ready for your editor, player or translation platform.</li>
+    </ol>
+  </section>
+
+  <section id="diff" aria-labelledby="diff-h">
+    <h2 id="diff-h">How SBV differs from SRT</h2>
+    <div class="example-grid">
+      <div>
+        <span class="col-label">SubViewer (.sbv) — as exported by YouTube</span>
+<pre>0:00:01.600,0:00:04.080
+&gt;&gt; Hello everyone, welcome back.</pre>
+      </div>
+      <div>
+        <span class="col-label">SubRip (.srt) — after conversion</span>
+<pre>1
+00:00:01,600 --&gt; 00:00:04,080
+&gt;&gt; Hello everyone, welcome back.</pre>
+      </div>
+    </div>
+    <p>Four small structural differences make SBV unreadable to most SRT importers, and this converter rewrites every one of them:</p>
+    <ul class="steps">
+      <li><strong>One comma-joined timing line</strong> — SBV writes <code>start,end</code> on a single line; SRT expects <code>start --&gt; end</code> with a spaced arrow.</li>
+      <li><strong>Millisecond separator</strong> — SBV uses a period inside each timestamp; SRT uses a comma (confusingly, the opposite role the comma plays in SBV's line).</li>
+      <li><strong>Single-digit hours</strong> — SBV writes <code>0:00:01.600</code>; SRT convention is a zero-padded <code>00:00:01,600</code>.</li>
+      <li><strong>No cue numbers</strong> — SBV blocks start directly with the timing line; SRT requires a sequence number above each cue, which the converter generates from 1.</li>
+    </ul>
+    <p>SBV carries no styling whatsoever — no italics, no colors, no positioning — so nothing is lost going to SRT. Speaker markers like <code>&gt;&gt;</code> are plain text and pass through untouched.</p>
+  </section>
+
+  <section id="errors" aria-labelledby="errors-h">
+    <h2 id="errors-h">Typical SBV headaches</h2>
+    <ul class="steps">
+      <li><strong>Excel or a CSV tool mangled the file.</strong> Because every timing line contains a comma, spreadsheet apps happily "import" .sbv as CSV and destroy it on save. Always open SBV files in a plain-text editor — or convert them here straight from the original download.</li>
+      <li><strong>Renaming .sbv to .srt does nothing.</strong> Players then read <code>0:00:01.600,0:00:04.080</code> where they expect a numbered cue with an arrow, and show either nothing or an import error. The structure has to be rewritten, not relabeled.</li>
+      <li><strong>Blocks glued together without a blank line.</strong> Hand-edited SBV sometimes loses the empty line between cues; the following cue's timing line then gets swallowed as caption text. This converter skips unreadable blocks instead of failing and reports how many were skipped, so you can fix the source precisely.</li>
+    </ul>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-h">
+    <h2 id="faq-h">SBV to SRT — frequently asked questions</h2>
+
+    <details>
+      <summary>Where do I get an SBV file from YouTube?</summary>
+      <p>In YouTube Studio open <em>Subtitles</em>, pick the video and language, click the three-dot menu next to the track and choose a download format — <code>.sbv</code> is the classic SubViewer export. Modern Studio can also hand you .srt or .vtt directly, so this converter is most useful for older .sbv archives you already have, or for third-party captioning tools that still only emit SBV.</p>
+    </details>
+
+    <details>
+      <summary>Why won't my video editor open the .sbv file directly?</summary>
+      <p>Almost nothing outside YouTube speaks SubViewer. An SBV timing line reads <code>0:00:01.600,0:00:04.080</code> — no <code>--&gt;</code> arrow, no cue numbers, single-digit hours — so importers built for SRT see a malformed file and give up on the first line. Converting to SRT rewrites the structure into what editors, players and translation platforms expect.</p>
+    </details>
+
+    <details>
+      <summary>Does SBV support italics, colors or positioning?</summary>
+      <p>No — SBV cue text is plain text only. That means there is nothing to lose in this direction of conversion. If you want italics in the resulting SRT you can add <code>&lt;i&gt;</code> tags after converting; just don't take that SRT back to SBV afterwards, because YouTube would display the tags as literal text.</p>
+    </details>
+
+    <details>
+      <summary>What do the "&gt;&gt;" arrows in my YouTube captions mean?</summary>
+      <p>A double angle bracket is the closed-captioning convention for a change of speaker (and <code>&gt;&gt; [music]</code>-style brackets mark sound events). They are ordinary text, not markup, so the converter passes them through unchanged. Keep them if the SRT is for accessibility; delete them in your editor if the SRT is just a transcript source.</p>
+    </details>
+
+    <details>
+      <summary>Can I convert SRT back to SBV for tools that expect SubViewer?</summary>
+      <p>Yes. Change the "Convert to" menu on this page to <code>SBV (.sbv)</code> and drop in an SRT file — the converter writes proper SubViewer output with period milliseconds, single-digit hours and comma-joined timing lines. Enable tag stripping first so no <code>&lt;i&gt;</code> or <code>&lt;font&gt;</code> markup leaks into the plain-text SBV.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="site">
+  <h2>Subtitle tools</h2>
+  <ul class="more-tools">
+    <li><a href="../">SRT / VTT / SBV converter &amp; time shifter</a></li>
+    <li><a href="../srt-to-vtt/">SRT to VTT converter</a></li>
+    <li><a href="../vtt-to-srt/">VTT to SRT converter</a></li>
+    <li><a href="../shift-subtitle-timing/">Shift subtitle timing</a></li>
+  </ul>
+  <h2>More from BitBleep</h2>
+  <ul class="more-tools">
+    <li><a href="https://bitbleep.itch.io" rel="noopener" target="_blank">Game assets &amp; tools on itch.io</a></li>
+    <li><a href="https://bitbleep.itch.io/retro-sfx-teaser" rel="noopener" target="_blank">Free retro SFX pack (20 sounds)</a></li>
+    <li><a href="https://github.com/PrayerT/retro-sfx-gen" rel="noopener" target="_blank">Open-source SFX generator (GitHub)</a></li>
+  </ul>
+  <p>Made by BitBleep. This tool is free, has no ads, and processes everything locally in your browser &mdash; files are never uploaded.</p>
+</footer>
+
+<script>
+window.PAGE_SAMPLE = '0:00:01.600,0:00:04.080\n>> Hello everyone, welcome back to the channel.\n\n' +
+  '0:00:05.000,0:00:07.250\nThis sample caption has two lines\nin a single cue.\n\n' +
+  '0:00:08.000,0:00:10.500\n>> Convert it to SRT for editing.\n';
+</script>
+<script src="../subtitle-core.js"></script>
+<script src="../app.js"></script>
+</body>
+</html>

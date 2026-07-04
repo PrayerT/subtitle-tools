@@ -5,4 +5,24 @@
     <lastmod>2026-07-04</lastmod>
     <changefreq>weekly</changefreq>
   </url>
+  <url>
+    <loc>https://prayert.github.io/subtitle-tools/srt-to-vtt/</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://prayert.github.io/subtitle-tools/vtt-to-srt/</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://prayert.github.io/subtitle-tools/sbv-to-srt/</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://prayert.github.io/subtitle-tools/shift-subtitle-timing/</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+  </url>
 </urlset>

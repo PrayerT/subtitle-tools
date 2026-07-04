@@ -182,7 +182,9 @@
     render();
   });
 
-  var SAMPLE = '1\n00:00:01,600 --> 00:00:04,080\n<i>Welcome!</i> This is a sample subtitle.\n\n' +
+  // Landing pages can preset a format-specific sample via window.PAGE_SAMPLE
+  // (defined in an inline <script> before this file loads).
+  var SAMPLE = window.PAGE_SAMPLE || '1\n00:00:01,600 --> 00:00:04,080\n<i>Welcome!</i> This is a sample subtitle.\n\n' +
     '2\n00:00:05,000 --> 00:00:07,250\nIt has two lines\nin a single cue.\n\n' +
     '3\n00:00:08,000 --> 00:00:10,500\nConvert, shift, or clean it.\n';
   els.sample.addEventListener('click', function () {

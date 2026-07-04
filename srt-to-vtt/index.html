@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SRT to VTT Converter — Free Online Tool, No Upload</title>
+<meta name="description" content="Convert SRT subtitles to WebVTT for HTML5 video, Video.js and HLS players. Adds the WEBVTT header and fixes comma timestamps instantly in your browser — files are never uploaded.">
+<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101217" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="SRT to VTT Converter — Free, No Upload">
+<meta property="og:description" content="Turn .srt subtitles into .vtt captions that HTML5 video actually accepts. Runs 100% in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BitBleep">
+<meta property="og:url" content="https://prayert.github.io/subtitle-tools/srt-to-vtt/">
+<meta property="og:image" content="https://prayert.github.io/subtitle-tools/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://prayert.github.io/subtitle-tools/srt-to-vtt/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233757e0'/%3E%3Crect x='10' y='38' width='32' height='7' rx='3.5' fill='%23fff'/%3E%3Crect x='10' y='49' width='44' height='7' rx='3.5' fill='%23fff' opacity='.75'/%3E%3Cpath d='M24 12l14 9-14 9z' fill='%23fff'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SRT to VTT Converter",
+  "url": "https://prayert.github.io/subtitle-tools/srt-to-vtt/",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": "Convert SRT to WebVTT, add WEBVTT header, convert comma timestamps to periods, strip formatting tags, batch conversion with ZIP download",
+  "publisher": { "@type": "Organization", "name": "BitBleep", "url": "https://bitbleep.itch.io" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can I just rename my .srt file to .vtt?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Browsers parse the file, not the extension. A renamed SRT file still starts with a cue number instead of the required WEBVTT header, and its timestamps still use commas (00:00:03,400) where WebVTT demands periods (00:00:03.400). Chrome, Firefox and Safari will silently show no captions at all. A real conversion rewrites both." }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens to the cue numbers from my SRT file?",
+      "acceptedAnswer": { "@type": "Answer", "text": "They are removed. In WebVTT the line above the timestamps is an optional cue identifier, not a required sequence number, and most caption workflows leave it out. Dropping the numbers keeps the output minimal and avoids confusing players that treat identifiers specially. If you later convert back to SRT, cues are renumbered from 1 automatically." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do italics and other formatting tags survive the conversion?",
+      "acceptedAnswer": { "@type": "Answer", "text": "HTML-style tags like <i>, <b> and <u> are valid in both SRT and WebVTT, so they are kept as-is. ASS override codes such as {\\an8} (used by some SRT authors to position text) are not valid WebVTT and will be displayed as literal text by browsers — enable “Strip formatting tags” to remove them during conversion." }
+    },
+    {
+      "@type": "Question",
+      "name": "I converted to VTT but the captions still don't show — why?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The three usual causes are: (1) the <track> element is missing default, so the browser loads the captions but doesn't switch them on; (2) the video and the .vtt file are served from different origins without CORS headers and a crossorigin attribute — the track then fails silently; (3) the server sends the .vtt file with a wrong Content-Type. Serve it as text/vtt and check the browser console for track errors." }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I convert a whole season of SRT episodes to VTT?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Select or drop all the .srt files at once. Each one is converted independently with the same settings and keeps its original filename with a .vtt extension — handy because many players auto-load captions by matching filenames. Use “Download all as ZIP” to save the whole batch in one click." }
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  --bg:#f7f8fb; --panel:#ffffff; --text:#1b2333; --muted:#5b6474;
+  --border:#dde1ea; --accent:#3757e0; --accent-text:#ffffff;
+  --accent-soft:#eaeefc; --ok:#1a7f4e; --err:#c0392b; --mono-bg:#f2f4f9;
+  --shadow:0 1px 3px rgba(20,30,60,.07),0 8px 24px rgba(20,30,60,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#101217; --panel:#181b22; --text:#e8eaf0; --muted:#9aa3b2;
+    --border:#2a2f3a; --accent:#8ea2ff; --accent-text:#0e1330;
+    --accent-soft:#232a45; --ok:#5ecb96; --err:#ff8a75; --mono-bg:#12151b;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+main,header.site,footer.site{max-width:900px;margin:0 auto;padding:0 20px}
+header.site{padding-top:40px;text-align:center}
+h1{font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.25;margin:0 0 10px}
+.tagline{color:var(--muted);margin:0 auto 6px;max-width:44em}
+.privacy-note{display:inline-block;font-size:.85rem;color:var(--ok);border:1px solid currentColor;
+  border-radius:99px;padding:2px 12px;margin-top:10px;opacity:.9}
+.tool-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:18px 0 0;font-size:.88rem}
+.tool-nav a{color:var(--accent);text-decoration:none;border:1px solid var(--border);border-radius:99px;
+  padding:3px 12px;background:var(--panel)}
+.tool-nav a:hover{border-color:var(--accent)}
+.tool-nav a[aria-current=page]{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+section{margin:36px 0}
+h2{font-size:1.25rem;margin:0 0 12px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.tool{padding:20px}
+.dropzone{
+  border:2px dashed var(--border);border-radius:12px;padding:26px 16px;text-align:center;
+  color:var(--muted);cursor:pointer;transition:border-color .15s,background .15s;outline-offset:3px;
+}
+.dropzone:hover,.dropzone:focus-visible,.dropzone.dragging{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.dropzone strong{color:var(--text)}
+.dropzone label{color:var(--accent);cursor:pointer;text-decoration:underline}
+.file-list{list-style:none;display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:12px 0 0}
+.file-chip{
+  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  font:inherit;font-size:.83rem;padding:6px 12px;border-radius:9px;cursor:pointer;
+  background:var(--mono-bg);border:1px solid var(--border);color:var(--text);
+}
+.file-chip.selected{border-color:var(--accent);background:var(--accent-soft)}
+.file-chip.has-error{border-color:var(--err)}
+.file-chip .chip-status{color:var(--muted);font-size:.75rem}
+.file-chip.has-error .chip-status{color:var(--err)}
+.io-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media (max-width:720px){.io-grid{grid-template-columns:1fr}}
+.io-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.io-col label.col-label{font-weight:600;font-size:.9rem}
+textarea{
+  width:100%;min-height:230px;resize:vertical;border:1px solid var(--border);border-radius:10px;
+  background:var(--mono-bg);color:var(--text);padding:12px;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin:18px 0 4px;
+  padding:14px;border:1px solid var(--border);border-radius:10px}
+.controls .field{display:flex;align-items:center;gap:8px;font-size:.92rem}
+select,input[type=number]{
+  font:inherit;font-size:.92rem;color:var(--text);background:var(--panel);
+  border:1px solid var(--border);border-radius:8px;padding:6px 8px;
+}
+input[type=number]{width:96px}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.btn{
+  font:inherit;font-size:.92rem;font-weight:600;border-radius:9px;padding:8px 16px;cursor:pointer;
+  border:1px solid var(--border);background:var(--panel);color:var(--text);
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.btn-primary:hover{opacity:.92;color:var(--accent-text)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--border);color:var(--text)}
+.btn-primary:disabled:hover{color:var(--accent-text)}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.stats{font-size:.88rem;color:var(--muted);min-height:1.4em;margin:10px 0 0}
+.stats-ok{color:var(--ok)}
+.stats-error{color:var(--err)}
+.steps{padding-left:1.3em;margin:0}
+.steps li{margin:6px 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+.table-wrap{overflow-x:auto}
+th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--mono-bg)}
+td code,p code,li code{background:var(--mono-bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:.85em}
+pre{background:var(--mono-bg);border:1px solid var(--border);border-radius:10px;padding:12px;overflow-x:auto;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0}
+.example-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:720px){.example-grid{grid-template-columns:1fr}}
+.example-grid .col-label{font-weight:600;font-size:.9rem;display:block;margin-bottom:6px}
+details{border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--panel)}
+summary{font-weight:600;cursor:pointer}
+details p{margin:10px 0 2px;color:var(--muted)}
+footer.site{border-top:1px solid var(--border);margin-top:48px;padding-top:24px;padding-bottom:40px;
+  font-size:.88rem;color:var(--muted)}
+footer.site h2{font-size:1rem;color:var(--text)}
+.more-tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;padding:0;list-style:none}
+.more-tools li{border:1px dashed var(--border);border-radius:8px;padding:4px 12px}
+.more-tools a{color:var(--accent);text-decoration:none}
+.more-tools a:hover{text-decoration:underline}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <h1>SRT to VTT Converter</h1>
+  <p class="tagline">Turn SubRip (<strong>.srt</strong>) subtitles into WebVTT (<strong>.vtt</strong>) captions that the HTML5 <code>&lt;track&gt;</code> element, Video.js, Plyr and HLS players actually accept.</p>
+  <p class="privacy-note">Runs 100% in your browser — files are never uploaded</p>
+  <nav class="tool-nav" aria-label="Subtitle tools">
+    <a href="../">All-in-one converter</a>
+    <a href="./" aria-current="page">SRT → VTT</a>
+    <a href="../vtt-to-srt/">VTT → SRT</a>
+    <a href="../sbv-to-srt/">SBV → SRT</a>
+    <a href="../shift-subtitle-timing/">Shift timing</a>
+  </nav>
+</header>
+
+<main>
+  <section aria-label="SRT to VTT converter tool">
+    <div class="panel tool">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Add SRT files">
+        <strong>Drop .srt files here</strong> (multiple files supported — .vtt and .sbv work too)<br>
+        or <label for="file-input">browse for files</label>
+        <input type="file" id="file-input" class="visually-hidden" multiple accept=".srt,.vtt,.sbv,.sub,.txt,text/plain,text/vtt">
+      </div>
+      <ul id="file-list" class="file-list" hidden></ul>
+
+      <div class="controls" role="group" aria-label="Conversion options">
+        <span class="field">
+          <label for="out-format">Convert to</label>
+          <select id="out-format">
+            <option value="vtt" selected>WebVTT (.vtt)</option>
+            <option value="srt">SRT (.srt)</option>
+            <option value="sbv">SBV (.sbv)</option>
+            <option value="txt">Plain text transcript (.txt)</option>
+          </select>
+        </span>
+        <span class="field">
+          <label for="shift-input">Shift by</label>
+          <input type="number" id="shift-input" step="0.1" placeholder="0.0" aria-describedby="shift-hint">
+          <span id="shift-hint">seconds (e.g. <code>-2.5</code>)</span>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-strip">
+          <label for="opt-strip">Strip formatting tags (<code>&lt;i&gt;</code>, <code>&lt;font&gt;</code>, <code>{\an8}</code>…)</label>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-remove-empty">
+          <label for="opt-remove-empty">Remove empty cues</label>
+        </span>
+      </div>
+
+      <div class="io-grid">
+        <div class="io-col">
+          <label class="col-label" for="paste-input">Input — or paste SRT text</label>
+          <textarea id="paste-input" spellcheck="false" placeholder="1&#10;00:00:01,600 --> 00:00:04,080&#10;Paste SRT here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn" id="btn-sample">Load sample</button>
+            <button type="button" class="btn" id="btn-clear">Clear</button>
+          </div>
+        </div>
+        <div class="io-col">
+          <label class="col-label" for="output">VTT output (updates instantly)</label>
+          <textarea id="output" readonly spellcheck="false" placeholder="WebVTT output appears here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-download" disabled>Download .vtt</button>
+            <button type="button" class="btn btn-primary" id="btn-download-all" hidden>Download all as ZIP</button>
+            <button type="button" class="btn" id="btn-copy" disabled>Copy output</button>
+          </div>
+        </div>
+      </div>
+      <p id="stats" class="stats">Drop .srt files or paste SRT text to start.</p>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-h">
+    <h2 id="how-h">How to convert SRT to VTT</h2>
+    <ol class="steps">
+      <li><strong>Add your SRT</strong> — drop one or more <code>.srt</code> files above, or paste the subtitle text. The output format is already set to WebVTT.</li>
+      <li><strong>Check the preview</strong> — the right-hand pane shows the finished VTT immediately: <code>WEBVTT</code> header on top, periods in the timestamps, cue numbers removed.</li>
+      <li><strong>Download</strong> — save each <code>.vtt</code> file (same filename, new extension) or grab a whole batch as a ZIP, then reference it from your <code>&lt;track src="…"&gt;</code>.</li>
+    </ol>
+  </section>
+
+  <section id="diff" aria-labelledby="diff-h">
+    <h2 id="diff-h">What actually changes between SRT and VTT</h2>
+    <div class="example-grid">
+      <div>
+        <span class="col-label">Before — SubRip (.srt)</span>
+<pre>1
+00:00:03,400 --&gt; 00:00:06,177
+Hello! These captions
+were made in SubRip format.</pre>
+      </div>
+      <div>
+        <span class="col-label">After — WebVTT (.vtt)</span>
+<pre>WEBVTT
+
+00:00:03.400 --&gt; 00:00:06.177
+Hello! These captions
+were made in SubRip format.</pre>
+      </div>
+    </div>
+    <p>The two formats are close relatives, which is exactly why the failure is so confusing: everything <em>looks</em> right, yet the browser shows nothing. Three precise edits make the difference:</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Change</th><th scope="col">Why WebVTT requires it</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A <code>WEBVTT</code> line is added at the very top, followed by a blank line</td>
+            <td>The spec makes this magic header mandatory — a parser that doesn't find it aborts before reading a single cue.</td>
+          </tr>
+          <tr>
+            <td>Millisecond separator switches from comma to period (<code>00:00:03,400</code> → <code>00:00:03.400</code>)</td>
+            <td>WebVTT timestamps only allow the period. A comma makes the cue timing invalid, and invalid cues are dropped silently.</td>
+          </tr>
+          <tr>
+            <td>The sequence numbers above each cue are removed</td>
+            <td>In VTT that position holds an <em>optional</em> cue identifier, not a counter. Leaving numbers out keeps the file clean; nothing references them.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Cue text passes through untouched, including line breaks and tags like <code>&lt;i&gt;</code> that are legal in both formats. The converter also strips a UTF-8 BOM and normalizes Windows line endings, two other details that can trip up strict VTT parsers.</p>
+  </section>
+
+  <section id="errors" aria-labelledby="errors-h">
+    <h2 id="errors-h">Captions still not showing? The usual suspects</h2>
+    <ul class="steps">
+      <li><strong>The file was renamed, not converted.</strong> An <code>.srt</code> renamed to <code>.vtt</code> keeps its commas and lacks the header — browsers reject it without any visible error. Run it through the converter above instead.</li>
+      <li><strong>No <code>default</code> on the <code>&lt;track&gt;</code>.</strong> Without it, the captions load but stay switched off until the viewer enables them in the player UI. Use <code>&lt;track kind="captions" src="captions.vtt" srclang="en" label="English" default&gt;</code>.</li>
+      <li><strong>Cross-origin blocking.</strong> If the page and the .vtt live on different origins, the track request needs CORS headers on the server <em>and</em> a <code>crossorigin</code> attribute on the <code>&lt;video&gt;</code> element. When either is missing the track fails silently — check the DevTools console.</li>
+      <li><strong>Wrong <code>Content-Type</code>.</strong> Some servers ship .vtt as <code>application/octet-stream</code>. Configure them to send <code>text/vtt</code>.</li>
+    </ul>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-h">
+    <h2 id="faq-h">SRT to VTT — frequently asked questions</h2>
+
+    <details>
+      <summary>Can I just rename my .srt file to .vtt?</summary>
+      <p>No. Browsers parse the file, not the extension. A renamed SRT file still starts with a cue number instead of the required <code>WEBVTT</code> header, and its timestamps still use commas (<code>00:00:03,400</code>) where WebVTT demands periods (<code>00:00:03.400</code>). Chrome, Firefox and Safari will silently show no captions at all. A real conversion rewrites both.</p>
+    </details>
+
+    <details>
+      <summary>What happens to the cue numbers from my SRT file?</summary>
+      <p>They are removed. In WebVTT the line above the timestamps is an <em>optional cue identifier</em>, not a required sequence number, and most caption workflows leave it out. Dropping the numbers keeps the output minimal and avoids confusing players that treat identifiers specially. If you later convert back to SRT, cues are renumbered from 1 automatically.</p>
+    </details>
+
+    <details>
+      <summary>Do italics and other formatting tags survive the conversion?</summary>
+      <p>HTML-style tags like <code>&lt;i&gt;</code>, <code>&lt;b&gt;</code> and <code>&lt;u&gt;</code> are valid in both SRT and WebVTT, so they are kept as-is. ASS override codes such as <code>{\an8}</code> (used by some SRT authors to position text at the top) are <em>not</em> valid WebVTT and browsers display them as literal text — enable “Strip formatting tags” to remove them during conversion.</p>
+    </details>
+
+    <details>
+      <summary>I converted to VTT but the captions still don't show — why?</summary>
+      <p>The three usual causes: (1) the <code>&lt;track&gt;</code> element is missing <code>default</code>, so the browser loads the captions but doesn't switch them on; (2) the video and the .vtt file are served from different origins without CORS headers and a <code>crossorigin</code> attribute — the track then fails silently; (3) the server sends the .vtt with a wrong <code>Content-Type</code>. Serve it as <code>text/vtt</code> and check the browser console for track errors.</p>
+    </details>
+
+    <details>
+      <summary>How do I convert a whole season of SRT episodes to VTT?</summary>
+      <p>Select or drop all the <code>.srt</code> files at once. Each one is converted independently with the same settings and keeps its original filename with a <code>.vtt</code> extension — handy because many players auto-load captions by matching filenames. Use “Download all as ZIP” to save the whole batch in one click.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="site">
+  <h2>Subtitle tools</h2>
+  <ul class="more-tools">
+    <li><a href="../">SRT / VTT / SBV converter &amp; time shifter</a></li>
+    <li><a href="../vtt-to-srt/">VTT to SRT converter</a></li>
+    <li><a href="../sbv-to-srt/">SBV to SRT converter (YouTube)</a></li>
+    <li><a href="../shift-subtitle-timing/">Shift subtitle timing</a></li>
+  </ul>
+  <h2>More from BitBleep</h2>
+  <ul class="more-tools">
+    <li><a href="https://bitbleep.itch.io" rel="noopener" target="_blank">Game assets &amp; tools on itch.io</a></li>
+    <li><a href="https://bitbleep.itch.io/retro-sfx-teaser" rel="noopener" target="_blank">Free retro SFX pack (20 sounds)</a></li>
+    <li><a href="https://github.com/PrayerT/retro-sfx-gen" rel="noopener" target="_blank">Open-source SFX generator (GitHub)</a></li>
+  </ul>
+  <p>Made by BitBleep. This tool is free, has no ads, and processes everything locally in your browser &mdash; files are never uploaded.</p>
+</footer>
+
+<script src="../subtitle-core.js"></script>
+<script src="../app.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SRT to VTT Converter &amp; Subtitle Time Shifter — Free, No Upload</title>
+<title>Subtitle Converter &amp; Time Shifter — SRT, VTT, SBV — Free, No Upload</title>
 <meta name="description" content="Convert subtitles between SRT, WebVTT and SBV, shift timing to fix out-of-sync subtitles, strip formatting tags, and export plain transcripts. Batch files, instant results — everything runs in your browser, nothing is uploaded.">
 <meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101217" media="(prefers-color-scheme: dark)">
@@ -95,6 +95,11 @@ h1{font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.25;margin:0 0 10px}
 .tagline{color:var(--muted);margin:0 auto 6px;max-width:44em}
 .privacy-note{display:inline-block;font-size:.85rem;color:var(--ok);border:1px solid currentColor;
   border-radius:99px;padding:2px 12px;margin-top:10px;opacity:.9}
+.tool-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:18px 0 0;font-size:.88rem}
+.tool-nav a{color:var(--accent);text-decoration:none;border:1px solid var(--border);border-radius:99px;
+  padding:3px 12px;background:var(--panel)}
+.tool-nav a:hover{border-color:var(--accent)}
+.tool-nav a[aria-current=page]{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
 section{margin:36px 0}
 h2{font-size:1.25rem;margin:0 0 12px}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
@@ -175,6 +180,12 @@ footer.site h2{font-size:1rem;color:var(--text)}
   <h1>Subtitle Converter &amp; Time Shifter</h1>
   <p class="tagline">Convert between <strong>SRT</strong>, <strong>WebVTT</strong> and <strong>SBV</strong>, shift timing to fix out-of-sync subtitles, strip formatting tags, or export a plain transcript.</p>
   <p class="privacy-note">Runs 100% in your browser — files are never uploaded</p>
+  <nav class="tool-nav" aria-label="Dedicated subtitle tools">
+    <a href="srt-to-vtt/">SRT → VTT</a>
+    <a href="vtt-to-srt/">VTT → SRT</a>
+    <a href="sbv-to-srt/">SBV → SRT</a>
+    <a href="shift-subtitle-timing/">Shift timing</a>
+  </nav>
 </header>
 
 <main>
@@ -309,6 +320,13 @@ footer.site h2{font-size:1rem;color:var(--text)}
 </main>
 
 <footer class="site">
+  <h2>Subtitle tools</h2>
+  <ul class="more-tools">
+    <li><a href="srt-to-vtt/">SRT to VTT converter</a></li>
+    <li><a href="vtt-to-srt/">VTT to SRT converter</a></li>
+    <li><a href="sbv-to-srt/">SBV to SRT converter (YouTube)</a></li>
+    <li><a href="shift-subtitle-timing/">Shift subtitle timing</a></li>
+  </ul>
   <h2>More from BitBleep</h2>
   <ul class="more-tools">
     <li><a href="https://bitbleep.itch.io" rel="noopener" target="_blank">Game assets &amp; tools on itch.io</a></li>

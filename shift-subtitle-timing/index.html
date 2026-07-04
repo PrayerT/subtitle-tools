@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shift Subtitle Timing Online — Fix Out-of-Sync SRT, VTT &amp; SBV</title>
+<meta name="description" content="Subtitles out of sync? Shift every timestamp in an SRT, WebVTT or SBV file by any number of seconds — positive for later, negative for earlier. Keeps the original format. Free, in-browser, no upload.">
+<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101217" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Shift Subtitle Timing — Fix Out-of-Sync Subtitles Online">
+<meta property="og:description" content="Move every cue in an SRT, VTT or SBV file earlier or later by a fixed number of seconds. Runs 100% in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BitBleep">
+<meta property="og:url" content="https://prayert.github.io/subtitle-tools/shift-subtitle-timing/">
+<meta property="og:image" content="https://prayert.github.io/subtitle-tools/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://prayert.github.io/subtitle-tools/shift-subtitle-timing/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233757e0'/%3E%3Crect x='10' y='38' width='32' height='7' rx='3.5' fill='%23fff'/%3E%3Crect x='10' y='49' width='44' height='7' rx='3.5' fill='%23fff' opacity='.75'/%3E%3Cpath d='M24 12l14 9-14 9z' fill='%23fff'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Subtitle Timing Shifter",
+  "url": "https://prayert.github.io/subtitle-tools/shift-subtitle-timing/",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": "Shift subtitle timing by seconds or milliseconds, delay or advance SRT, WebVTT and SBV subtitles, keep the original format, batch retiming with ZIP download",
+  "publisher": { "@type": "Organization", "name": "BitBleep", "url": "https://bitbleep.itch.io" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do I work out the exact number of seconds to shift?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Pause the video the instant the first clearly identifiable line is spoken and note the player time. Find that same line in the subtitle file and note its start time. Subtract: video time minus subtitle time is your shift. If the line is spoken at 1:12 but the cue says 1:15, enter -3. Decimals work too — -2.75 shifts everything 2.75 seconds earlier." }
+    },
+    {
+      "@type": "Question",
+      "name": "My subtitles start in sync but drift further out over time — will a shift fix that?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. A growing error means the subtitle file was timed for a different version of the video — most often a frame-rate mismatch (a 25 fps PAL timing played against 23.976 fps film drifts by roughly 2.5 seconds per minute) or a different cut with scenes added or removed. A constant offset cannot correct a changing error; you need a subtitle file made for your exact release, or a retiming tool that can stretch timestamps by a scale factor." }
+    },
+    {
+      "@type": "Question",
+      "name": "Does shifting change anything in the file besides the timestamps?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The cue text, line breaks and any formatting tags are left untouched unless you also enable tag stripping. SRT cues are renumbered sequentially, and this page automatically keeps the output in the same format it detected — an SRT stays an SRT, a VTT stays a VTT — so only the timing changes." }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens if my negative shift is bigger than the first cue's start time?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Timestamps can't go below zero. Any cue that would end at or before 00:00:00.000 is removed from the output (the status line reports how many were dropped). A cue that straddles zero keeps its end time but has its start clamped to 00:00:00.000. If early cues are disappearing, your offset is probably larger than the real error." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I shift only part of the file, say everything after an ad break?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Not directly — this tool applies one offset to every cue, which is the right fix for a constant delay. For a step change partway through (an inserted ad break or a recap cut from your copy), split the file at the break point in a text editor, shift only the second half here, and paste the halves back together, or use a desktop editor with two-point synchronization." }
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  --bg:#f7f8fb; --panel:#ffffff; --text:#1b2333; --muted:#5b6474;
+  --border:#dde1ea; --accent:#3757e0; --accent-text:#ffffff;
+  --accent-soft:#eaeefc; --ok:#1a7f4e; --err:#c0392b; --mono-bg:#f2f4f9;
+  --shadow:0 1px 3px rgba(20,30,60,.07),0 8px 24px rgba(20,30,60,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#101217; --panel:#181b22; --text:#e8eaf0; --muted:#9aa3b2;
+    --border:#2a2f3a; --accent:#8ea2ff; --accent-text:#0e1330;
+    --accent-soft:#232a45; --ok:#5ecb96; --err:#ff8a75; --mono-bg:#12151b;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+main,header.site,footer.site{max-width:900px;margin:0 auto;padding:0 20px}
+header.site{padding-top:40px;text-align:center}
+h1{font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.25;margin:0 0 10px}
+.tagline{color:var(--muted);margin:0 auto 6px;max-width:44em}
+.privacy-note{display:inline-block;font-size:.85rem;color:var(--ok);border:1px solid currentColor;
+  border-radius:99px;padding:2px 12px;margin-top:10px;opacity:.9}
+.tool-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:18px 0 0;font-size:.88rem}
+.tool-nav a{color:var(--accent);text-decoration:none;border:1px solid var(--border);border-radius:99px;
+  padding:3px 12px;background:var(--panel)}
+.tool-nav a:hover{border-color:var(--accent)}
+.tool-nav a[aria-current=page]{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+section{margin:36px 0}
+h2{font-size:1.25rem;margin:0 0 12px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.tool{padding:20px}
+.dropzone{
+  border:2px dashed var(--border);border-radius:12px;padding:26px 16px;text-align:center;
+  color:var(--muted);cursor:pointer;transition:border-color .15s,background .15s;outline-offset:3px;
+}
+.dropzone:hover,.dropzone:focus-visible,.dropzone.dragging{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.dropzone strong{color:var(--text)}
+.dropzone label{color:var(--accent);cursor:pointer;text-decoration:underline}
+.file-list{list-style:none;display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:12px 0 0}
+.file-chip{
+  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  font:inherit;font-size:.83rem;padding:6px 12px;border-radius:9px;cursor:pointer;
+  background:var(--mono-bg);border:1px solid var(--border);color:var(--text);
+}
+.file-chip.selected{border-color:var(--accent);background:var(--accent-soft)}
+.file-chip.has-error{border-color:var(--err)}
+.file-chip .chip-status{color:var(--muted);font-size:.75rem}
+.file-chip.has-error .chip-status{color:var(--err)}
+.io-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media (max-width:720px){.io-grid{grid-template-columns:1fr}}
+.io-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.io-col label.col-label{font-weight:600;font-size:.9rem}
+textarea{
+  width:100%;min-height:230px;resize:vertical;border:1px solid var(--border);border-radius:10px;
+  background:var(--mono-bg);color:var(--text);padding:12px;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin:18px 0 4px;
+  padding:14px;border:1px solid var(--border);border-radius:10px}
+.controls .field{display:flex;align-items:center;gap:8px;font-size:.92rem}
+select,input[type=number]{
+  font:inherit;font-size:.92rem;color:var(--text);background:var(--panel);
+  border:1px solid var(--border);border-radius:8px;padding:6px 8px;
+}
+input[type=number]{width:96px}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.btn{
+  font:inherit;font-size:.92rem;font-weight:600;border-radius:9px;padding:8px 16px;cursor:pointer;
+  border:1px solid var(--border);background:var(--panel);color:var(--text);
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.btn-primary:hover{opacity:.92;color:var(--accent-text)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--border);color:var(--text)}
+.btn-primary:disabled:hover{color:var(--accent-text)}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.stats{font-size:.88rem;color:var(--muted);min-height:1.4em;margin:10px 0 0}
+.stats-ok{color:var(--ok)}
+.stats-error{color:var(--err)}
+.steps{padding-left:1.3em;margin:0}
+.steps li{margin:6px 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+.table-wrap{overflow-x:auto}
+th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--mono-bg)}
+td code,p code,li code{background:var(--mono-bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:.85em}
+pre{background:var(--mono-bg);border:1px solid var(--border);border-radius:10px;padding:12px;overflow-x:auto;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0}
+.example-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:720px){.example-grid{grid-template-columns:1fr}}
+.example-grid .col-label{font-weight:600;font-size:.9rem;display:block;margin-bottom:6px}
+details{border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--panel)}
+summary{font-weight:600;cursor:pointer}
+details p{margin:10px 0 2px;color:var(--muted)}
+footer.site{border-top:1px solid var(--border);margin-top:48px;padding-top:24px;padding-bottom:40px;
+  font-size:.88rem;color:var(--muted)}
+footer.site h2{font-size:1rem;color:var(--text)}
+.more-tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;padding:0;list-style:none}
+.more-tools li{border:1px dashed var(--border);border-radius:8px;padding:4px 12px}
+.more-tools a{color:var(--accent);text-decoration:none}
+.more-tools a:hover{text-decoration:underline}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <h1>Shift Subtitle Timing</h1>
+  <p class="tagline">Move every cue in an <strong>SRT</strong>, <strong>WebVTT</strong> or <strong>SBV</strong> file earlier or later by a fixed number of seconds to fix out-of-sync subtitles. The file stays in its original format — only the timestamps change.</p>
+  <p class="privacy-note">Runs 100% in your browser — files are never uploaded</p>
+  <nav class="tool-nav" aria-label="Subtitle tools">
+    <a href="../">All-in-one converter</a>
+    <a href="../srt-to-vtt/">SRT → VTT</a>
+    <a href="../vtt-to-srt/">VTT → SRT</a>
+    <a href="../sbv-to-srt/">SBV → SRT</a>
+    <a href="./" aria-current="page">Shift timing</a>
+  </nav>
+</header>
+
+<main>
+  <section aria-label="Subtitle timing shifter tool">
+    <div class="panel tool">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Add subtitle files">
+        <strong>Drop .srt / .vtt / .sbv files here</strong> (multiple files supported)<br>
+        or <label for="file-input">browse for files</label>
+        <input type="file" id="file-input" class="visually-hidden" multiple accept=".srt,.vtt,.sbv,.sub,.txt,text/plain,text/vtt">
+      </div>
+      <ul id="file-list" class="file-list" hidden></ul>
+
+      <div class="controls" role="group" aria-label="Shift options">
+        <span class="field">
+          <label for="shift-input">Shift by</label>
+          <input type="number" id="shift-input" step="0.1" placeholder="-2.5" aria-describedby="shift-hint">
+          <span id="shift-hint">seconds — negative = earlier, positive = later</span>
+        </span>
+        <span class="field">
+          <label for="out-format">Output format</label>
+          <select id="out-format" aria-describedby="format-hint">
+            <option value="srt" selected>SRT (.srt)</option>
+            <option value="vtt">WebVTT (.vtt)</option>
+            <option value="sbv">SBV (.sbv)</option>
+            <option value="txt">Plain text transcript (.txt)</option>
+          </select>
+          <span id="format-hint">(auto-matches your input)</span>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-strip">
+          <label for="opt-strip">Strip formatting tags (<code>&lt;i&gt;</code>, <code>&lt;font&gt;</code>, <code>{\an8}</code>…)</label>
+        </span>
+        <span class="field">
+          <input type="checkbox" id="opt-remove-empty">
+          <label for="opt-remove-empty">Remove empty cues</label>
+        </span>
+      </div>
+
+      <div class="io-grid">
+        <div class="io-col">
+          <label class="col-label" for="paste-input">Input — or paste subtitle text</label>
+          <textarea id="paste-input" spellcheck="false" placeholder="1&#10;00:00:01,600 --> 00:00:04,080&#10;Paste SRT, WebVTT or SBV here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn" id="btn-sample">Load sample</button>
+            <button type="button" class="btn" id="btn-clear">Clear</button>
+          </div>
+        </div>
+        <div class="io-col">
+          <label class="col-label" for="output">Shifted output (updates instantly)</label>
+          <textarea id="output" readonly spellcheck="false" placeholder="Retimed subtitles appear here…"></textarea>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-download" disabled>Download file</button>
+            <button type="button" class="btn btn-primary" id="btn-download-all" hidden>Download all as ZIP</button>
+            <button type="button" class="btn" id="btn-copy" disabled>Copy output</button>
+          </div>
+        </div>
+      </div>
+      <p id="stats" class="stats">Drop subtitle files or paste subtitle text, then enter a shift in seconds.</p>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-h">
+    <h2 id="how-h">How to measure the offset precisely</h2>
+    <ol class="steps">
+      <li><strong>Find an anchor line</strong> — pause the video at the exact moment the first clearly identifiable sentence is spoken and note the player time (say <code>00:01:12</code>).</li>
+      <li><strong>Find the same line in the subtitles</strong> — drop the file above and look up that sentence's start time in the input pane (say <code>00:01:15</code>).</li>
+      <li><strong>Subtract: video time − subtitle time</strong> — here 72 s − 75 s = <strong>−3</strong>. Enter <code>-3</code> in the Shift field; the retimed file appears instantly.</li>
+      <li><strong>Spot-check near the end</strong> — pick a line in the last few minutes and verify it too. If it is still wrong <em>by a different amount</em>, you have drift rather than a constant offset (see below), and shifting alone won't fix it.</li>
+    </ol>
+  </section>
+
+  <section id="direction" aria-labelledby="direction-h">
+    <h2 id="direction-h">Positive or negative? A ten-second rule of thumb</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">What you observe</th><th scope="col">What it means</th><th scope="col">Shift sign</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Text appears <em>before</em> anyone says it</td>
+            <td>Subtitles run early — they need to be delayed</td>
+            <td>Positive, e.g. <code>2</code></td>
+          </tr>
+          <tr>
+            <td>Text appears <em>after</em> the words were spoken</td>
+            <td>Subtitles run late — they need to come earlier</td>
+            <td>Negative, e.g. <code>-2</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Fractions matter more than you'd think: an error as small as half a second is enough to feel "off" during fast dialogue. The field accepts decimals like <code>-1.25</code>, and the shift is applied with millisecond precision to both the start and end of every cue.</p>
+  </section>
+
+  <section id="drift" aria-labelledby="drift-h">
+    <h2 id="drift-h">Constant offset vs. drift — know which problem you have</h2>
+    <p><strong>A constant offset</strong> (every line wrong by the same amount) is what this page fixes. It typically happens when a subtitle file was timed from a version with a different amount of lead-in — an extra studio logo, a "previously on" recap, or a trimmed cold open.</p>
+    <p><strong>Drift</strong> (the error grows or shrinks over the runtime) cannot be fixed by any single shift. Its classic causes:</p>
+    <ul class="steps">
+      <li><strong>Frame-rate mismatch</strong> — timings authored against 25 fps PAL video but played on a 23.976 fps release run fast by about 4%, which compounds to roughly 2.5 seconds of error per minute of runtime.</li>
+      <li><strong>Different cut</strong> — scenes added or removed mid-video produce a <em>step</em>: perfectly synced up to a point, then suddenly off by a fixed amount. Splitting the file at the step and shifting only the second half works; see the FAQ.</li>
+    </ul>
+    <p>Quick diagnosis: if the offset you measured at the start of the video also fixes the end, shift and you're done. If not, look for a subtitle file matching your exact release before reaching for retiming tools.</p>
+  </section>
+
+  <section id="edges" aria-labelledby="edges-h">
+    <h2 id="edges-h">What the shifter does at the edges</h2>
+    <ul class="steps">
+      <li><strong>Nothing but timestamps change.</strong> Text, line breaks and formatting tags pass through byte-for-byte (unless you enable stripping). SRT output is renumbered from 1.</li>
+      <li><strong>The format is preserved.</strong> This page detects your input format and automatically selects the matching output, so an SRT comes back as SRT and a VTT as VTT — you can still override the menu to convert while you shift.</li>
+      <li><strong>No negative timestamps.</strong> With a large negative shift, cues that would end at or before <code>00:00:00.000</code> are dropped (the status line counts them), and a cue straddling zero has its start clamped to zero. If cues vanish, your offset is bigger than the real error.</li>
+    </ul>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-h">
+    <h2 id="faq-h">Subtitle syncing — frequently asked questions</h2>
+
+    <details>
+      <summary>How do I work out the exact number of seconds to shift?</summary>
+      <p>Pause the video the instant the first clearly identifiable line is spoken and note the player time. Find that same line in the subtitle file and note its start time. Subtract: video time minus subtitle time is your shift. If the line is spoken at 1:12 but the cue says 1:15, enter <code>-3</code>. Decimals work too — <code>-2.75</code> shifts everything 2.75 seconds earlier.</p>
+    </details>
+
+    <details>
+      <summary>My subtitles start in sync but drift further out over time — will a shift fix that?</summary>
+      <p>No. A growing error means the subtitle file was timed for a different version of the video — most often a frame-rate mismatch (a 25 fps PAL timing played against 23.976 fps film drifts by roughly 2.5 seconds per minute) or a different cut with scenes added or removed. A constant offset cannot correct a changing error; you need a subtitle file made for your exact release, or a retiming tool that can stretch timestamps by a scale factor.</p>
+    </details>
+
+    <details>
+      <summary>Does shifting change anything in the file besides the timestamps?</summary>
+      <p>The cue text, line breaks and any formatting tags are left untouched unless you also enable tag stripping. SRT cues are renumbered sequentially, and this page automatically keeps the output in the same format it detected — an SRT stays an SRT, a VTT stays a VTT — so only the timing changes.</p>
+    </details>
+
+    <details>
+      <summary>What happens if my negative shift is bigger than the first cue's start time?</summary>
+      <p>Timestamps can't go below zero. Any cue that would end at or before <code>00:00:00.000</code> is removed from the output (the status line reports how many were dropped). A cue that straddles zero keeps its end time but has its start clamped to <code>00:00:00.000</code>. If early cues are disappearing, your offset is probably larger than the real error.</p>
+    </details>
+
+    <details>
+      <summary>Can I shift only part of the file, say everything after an ad break?</summary>
+      <p>Not directly — this tool applies one offset to every cue, which is the right fix for a constant delay. For a step change partway through (an inserted ad break or a recap cut from your copy), split the file at the break point in a text editor, shift only the second half here, and paste the halves back together, or use a desktop editor with two-point synchronization.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="site">
+  <h2>Subtitle tools</h2>
+  <ul class="more-tools">
+    <li><a href="../">SRT / VTT / SBV converter &amp; time shifter</a></li>
+    <li><a href="../srt-to-vtt/">SRT to VTT converter</a></li>
+    <li><a href="../vtt-to-srt/">VTT to SRT converter</a></li>
+    <li><a href="../sbv-to-srt/">SBV to SRT converter (YouTube)</a></li>
+  </ul>
+  <h2>More from BitBleep</h2>
+  <ul class="more-tools">
+    <li><a href="https://bitbleep.itch.io" rel="noopener" target="_blank">Game assets &amp; tools on itch.io</a></li>
+    <li><a href="https://bitbleep.itch.io/retro-sfx-teaser" rel="noopener" target="_blank">Free retro SFX pack (20 sounds)</a></li>
+    <li><a href="https://github.com/PrayerT/retro-sfx-gen" rel="noopener" target="_blank">Open-source SFX generator (GitHub)</a></li>
+  </ul>
+  <p>Made by BitBleep. This tool is free, has no ads, and processes everything locally in your browser &mdash; files are never uploaded.</p>
+</footer>
+
+<script src="../subtitle-core.js"></script>
+<script>
+/* Page preset: keep the output format identical to the detected input format,
+   so shifting changes only the timing. A manual pick in the menu wins.
+   Must run before app.js so the file-input listener fires first. */
+(function () {
+  var out = document.getElementById('out-format');
+  var paste = document.getElementById('paste-input');
+  var fileInput = document.getElementById('file-input');
+  var dropzone = document.getElementById('dropzone');
+  var userChose = false;
+  out.addEventListener('change', function (e) { if (e.isTrusted) userChose = true; });
+  function apply(text) {
+    if (userChose || !window.SubtitleCore) return;
+    var f = window.SubtitleCore.detectFormat(text);
+    if (f && out.value !== f) {
+      out.value = f;
+      out.dispatchEvent(new Event('change'));
+    }
+  }
+  paste.addEventListener('input', function () { apply(paste.value); });
+  function applyFirstFile(files) {
+    if (files && files.length && files[0].text) {
+      files[0].text().then(apply, function () {});
+    }
+  }
+  fileInput.addEventListener('change', function () { applyFirstFile(fileInput.files); });
+  dropzone.addEventListener('drop', function (e) {
+    if (e.dataTransfer) applyFirstFile(e.dataTransfer.files);
+  });
+})();
+</script>
+<script src="../app.js"></script>
+</body>
+</html>

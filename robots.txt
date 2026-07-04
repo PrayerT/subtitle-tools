@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://prayert.github.io/subtitle-tools/sitemap.xml
